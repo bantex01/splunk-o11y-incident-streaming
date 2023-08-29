@@ -1,1 +1,0 @@
-# splunk-o11y-incident-streaming
