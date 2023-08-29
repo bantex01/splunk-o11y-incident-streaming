@@ -1,0 +1,22 @@
+---
+sfx_sources:
+- label: prod_sfx
+  realm: eu0
+  token: NM76t62cT-dSWpqgWOdHcA
+  cycle: 60
+  targets:
+  - prod_splunk
+- label: stage_sfx
+  realm: us1
+  token: some_token
+  cycle: 60
+  targets:
+  - prod_splunk
+targets:
+- label: prod_splunk
+  type: splunk
+  hec_url: https:blah-blah.co.uk
+  hec_token: aa18b9dd-ea02-4c63-941b-b5f8e1061d59
+- label: prod_textfile
+  type: file
+  file_name: /alex.txt
