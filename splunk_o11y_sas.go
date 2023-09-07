@@ -138,11 +138,12 @@ func main() {
 
 	//logger := log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
 
-	logger.Println("Running...")
+	logger.Println("Starting splunk_o11y_sas service...")
 	ReadYamlConfig("./config.yaml")
 
 	go func() {
 		for {
+			logger.Println("Starting metrics endpoint on port 2112")
 			http.Handle("/metrics", promhttp.Handler())
 			http.ListenAndServe(":2112", nil)
 		}
@@ -153,7 +154,7 @@ func main() {
 	var mainWg sync.WaitGroup
 
 	for _, sfxSource := range configStruct.SFXSources {
-		logger.Printf("Gathering incident data for %s\n", sfxSource.Label)
+		logger.Printf("Found SFX source with detail - Label: %s - SFXRealm: %s - Gather Cycle Time: %d - Target List %v\n", sfxSource.Label, sfxSource.Realm, sfxSource.Cycle, sfxSource.Targets)
 		mainWg.Add(1)
 		go initiateSourceCollection(sfxSource.Label, sfxSource.Realm, sfxSource.Token, sfxSource.Cycle, sfxSource.Targets, &mainWg)
 	}
@@ -168,47 +169,47 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	var typeStruct SendTarget
 	var incidentStruct []IncidentPayload
 	url := "https://api." + realm + ".signalfx.com/v2/incident"
-	fmt.Printf("url is %s\n", url)
+	//fmt.Printf("url is %s\n", url)
 
 	for range time.Tick(time.Second * time.Duration(cycle)) {
 
-		fmt.Printf("Starting cycle for sfx source %s\n", label)
+		logger.Printf("Starting gather cycle (%d) for sfx source %s\n", cycle, label)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			fmt.Println("Error creating request:", err)
+			logger.Println("Error creating HTTP request:", err)
 			return
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		fmt.Printf("token is %s\n", token)
+		//fmt.Printf("token is %s\n", token)
 		req.Header.Set("X-SF-TOKEN", token)
 
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println("Error sending request:", err)
+			logger.Println("Error sending HTTP request:", err)
 			return
 		}
 		//defer resp.Body.Close()
 
-		fmt.Println("Response Status:", resp.Status)
+		//fmt.Println("Response Status:", resp.Status)
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Println("Error reading body:", err)
+			logger.Println("Error reading response body:", err)
 		}
-		sb := string(body)
-		fmt.Println(sb)
+		//sb := string(body)
+		//fmt.Println(sb)
 
 		err = json.Unmarshal(body, &incidentStruct)
 		if err != nil {
-			fmt.Println("Error unmarshalling:", err)
+			logger.Println("Error unmarshalling response body:", err)
 		}
-		fmt.Printf("Received %d events\n", len(incidentStruct))
+		logger.Printf("Received %d events from SFX Source: %s\n", len(incidentStruct), label)
 
 		// lets send the array of incidents off to be sent to splunk
 
 		if len(incidentStruct) == 0 {
-			logger.Printf("No events found for label %s , sending metric and waiting for next loop...", label)
+			logger.Printf("No events found for label %s ,waiting for next loop...", label)
 			continue
 		}
 
@@ -216,14 +217,14 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 		var targetWg sync.WaitGroup
 		for _, targetLabel := range targets {
-			fmt.Printf("Label: %s has target of %v\n", label, targetLabel)
+			logger.Printf("Label: %s has target of %v\n", label, targetLabel)
 			for _, target := range configStruct.Targets {
 				//typeStruct = nil
 				if target.Label == targetLabel {
 					//fmt.Printf("Found the target in config struct for %s, will need to create a struct of type %s\n", target, target.Type)
 					switch target.Type {
 					case "splunk":
-						fmt.Printf("Weve found a splunk type target, creating struct\n")
+						logger.Printf("We've found a splunk type target for source %s\n", label)
 						typeStruct = &SplunkTarget{
 							Label:      label,
 							HECUrl:     target.HECUrl,
@@ -234,7 +235,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 							Payload:    incidentStruct,
 						}
 					case "file":
-						fmt.Printf("We've found a file type target, creating struct\n")
+						logger.Printf("We've found a file type target for source %s\n", label)
 						typeStruct = &FileTarget{
 							Label:     label,
 							FileName:  target.FileName,
@@ -245,7 +246,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 			}
 
-			fmt.Printf("At end of loop for targets, got this struct %+v\n", typeStruct)
+			//fmt.Printf("At end of loop for targets, got this struct %+v\n", typeStruct)
 
 			targetWg.Add(1)
 			go typeStruct.formatAndSend(&targetWg)
@@ -268,7 +269,7 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 	currentTime := time.Now()
 	epochTime := currentTime.Unix()
 
-	fmt.Printf("Sending to Splunk Target\n")
+	//logger.Printf("Sending to Splunk Target\n")
 
 	type Event struct {
 		Time       int64           `json:"time"`
@@ -297,7 +298,7 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 	// Convert the event to JSON
 	eventJSON, err := json.Marshal(batch)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		logger.Println("Error marshaling JSON:", err)
 		return
 	}
 
@@ -305,7 +306,7 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", target.HECUrl, bytes.NewBuffer(eventJSON))
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		logger.Println("Error creating request:", err)
 		return
 	}
 
@@ -314,24 +315,26 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error sending request:", err)
+		logger.Println("Error sending request:", err)
 		return
+	} else {
+		logger.Println("Successful send to splunk")
 	}
 
 	defer resp.Body.Close()
 
 	// Check the response status and handle accordingly
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Event sent successfully")
+		logger.Println("Event(s) sent to HTTP event collector successfully")
 	} else {
-		fmt.Println("Event send failed. Status code:", resp.StatusCode)
+		fmt.Println("Event(s) send failed to HTTP Event Collector. Status code:", resp.StatusCode)
 		// You can read the response body here for more details if needed
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Println("Error reading body:", err)
+			logger.Println("Error reading body:", err)
 		}
 		sb := string(body)
-		fmt.Println(sb)
+		logger.Println(sb)
 	}
 
 }
@@ -339,14 +342,14 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	defer wg.Done()
-	fmt.Printf("Sending to file target\n")
+	logger.Printf("Sending to file target\n")
 
 	logfilePath := "myfilelog.log"
 
 	// Open the logfile for append (create it if it doesn't exist)
 	logFile, err := os.OpenFile(logfilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("Error opening logfile:", err)
+		logger.Println("Error opening logfile:", err)
 		return
 	}
 	defer logFile.Close()
@@ -369,13 +372,15 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 
 		eventJSON, err := json.Marshal(fileEvent)
 		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
+			logger.Println("Error marshaling JSON:", err)
 			return
 		}
 
 		if _, err := logFile.WriteString(string(eventJSON) + "\n"); err != nil {
-			fmt.Println("Error writing to logfile:", err)
+			logger.Println("Error writing to logfile:", err)
 			return
+		} else {
+			logger.Printf("Successful append to log file: %s", logfilePath)
 		}
 
 	}
@@ -391,7 +396,7 @@ func ReadYamlConfig(f string) {
 
 	yamlFile, err := ioutil.ReadFile(fileBase)
 	if err != nil {
-		log.Printf("yamlFile.Get err   #%v ", err)
+		logger.Printf("yamlFile.Get err   #%v ", err)
 		os.Exit(1)
 	}
 
@@ -401,9 +406,9 @@ func ReadYamlConfig(f string) {
 		//fmt.Println("event conf file found")
 		err = yaml.Unmarshal(yamlFile, &configStruct)
 		if err != nil {
-			log.Fatalf("Unmarshal: %v", err)
+			logger.Fatalf("Unmarshal: %v", err)
 		}
-		fmt.Println(configStruct)
+		//fmt.Println(configStruct)
 	}
 
 }

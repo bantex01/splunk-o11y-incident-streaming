@@ -30,3 +30,139 @@ splunk-o11y-sas: 2023/09/07 15:36:30 Gathering incident data for stage_sfx
 splunk-o11y-sas: 2023/09/07 16:02:24 Running...
 splunk-o11y-sas: 2023/09/07 16:02:24 Gathering incident data for prod_sfx
 splunk-o11y-sas: 2023/09/07 16:02:24 Gathering incident data for stage_sfx
+splunk-o11y-sas: 2023/09/07 20:41:15 Starting splunk_o11y_sas service...
+splunk-o11y-sas: 2023/09/07 20:41:15 Found SFX source with detail - Label: prod_sfx - SFXRealm: eu0 - Gather Cycle Time: 60 - Target List [prod_splunk]
+splunk-o11y-sas: 2023/09/07 20:41:15 Found SFX source with detail - Label: stage_sfx - SFXRealm: eu0 - Gather Cycle Time: 25 - Target List [stage_splunk prod_textfile]
+splunk-o11y-sas: 2023/09/07 20:41:15 Starting metrics endpoint on port 2112
+splunk-o11y-sas: 2023/09/07 20:41:40 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:41:40 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:41:40 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:41:40 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:41:40 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:41:40 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:41:40 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:42:05 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:05 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:05 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:42:05 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:05 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:42:05 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:05 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:42:15 Starting gather cycle (60) for sfx source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:42:15 Received 1 events from SFX Source: prod_sfx
+splunk-o11y-sas: 2023/09/07 20:42:15 Label: prod_sfx has target of prod_splunk
+splunk-o11y-sas: 2023/09/07 20:42:15 Weve found a splunk type target for source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:42:30 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:30 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:30 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:42:30 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:30 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:42:30 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:30 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:42:55 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:55 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:55 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:42:55 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:55 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:42:55 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:42:55 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:43:15 Starting gather cycle (60) for sfx source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:43:15 Received 1 events from SFX Source: prod_sfx
+splunk-o11y-sas: 2023/09/07 20:43:15 Label: prod_sfx has target of prod_splunk
+splunk-o11y-sas: 2023/09/07 20:43:15 Weve found a splunk type target for source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:43:20 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:43:20 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:43:20 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:43:20 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:43:20 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:43:20 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:43:20 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:46:56 Starting splunk_o11y_sas service...
+splunk-o11y-sas: 2023/09/07 20:46:56 Found SFX source with detail - Label: prod_sfx - SFXRealm: eu0 - Gather Cycle Time: 60 - Target List [prod_splunk]
+splunk-o11y-sas: 2023/09/07 20:46:56 Found SFX source with detail - Label: stage_sfx - SFXRealm: eu0 - Gather Cycle Time: 25 - Target List [stage_splunk prod_textfile]
+splunk-o11y-sas: 2023/09/07 20:46:56 Starting metrics endpoint on port 2112
+splunk-o11y-sas: 2023/09/07 20:47:21 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:21 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:21 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:47:21 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:21 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:47:21 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:21 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:47:23 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:47:46 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:46 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:46 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:47:46 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:46 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:47:46 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:47:46 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:47:48 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:47:56 Starting gather cycle (60) for sfx source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:47:56 Received 1 events from SFX Source: prod_sfx
+splunk-o11y-sas: 2023/09/07 20:47:56 Label: prod_sfx has target of prod_splunk
+splunk-o11y-sas: 2023/09/07 20:47:56 Weve found a splunk type target for source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:47:58 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:48:11 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:11 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:11 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:48:11 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:11 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:48:11 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:11 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:48:13 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:48:36 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:36 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:36 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:48:36 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:36 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:48:36 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:48:36 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:48:38 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:48:56 Starting gather cycle (60) for sfx source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:48:56 Received 1 events from SFX Source: prod_sfx
+splunk-o11y-sas: 2023/09/07 20:48:56 Label: prod_sfx has target of prod_splunk
+splunk-o11y-sas: 2023/09/07 20:48:56 Weve found a splunk type target for source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:48:58 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:49:01 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:01 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:01 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:49:01 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:01 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:49:01 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:01 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:49:05 Starting splunk_o11y_sas service...
+splunk-o11y-sas: 2023/09/07 20:49:05 Found SFX source with detail - Label: prod_sfx - SFXRealm: eu0 - Gather Cycle Time: 60 - Target List [prod_splunk]
+splunk-o11y-sas: 2023/09/07 20:49:05 Found SFX source with detail - Label: stage_sfx - SFXRealm: eu0 - Gather Cycle Time: 25 - Target List [stage_splunk prod_textfile]
+splunk-o11y-sas: 2023/09/07 20:49:05 Starting metrics endpoint on port 2112
+splunk-o11y-sas: 2023/09/07 20:49:30 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:30 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:30 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:49:30 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:30 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:49:30 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:30 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:49:30 Successful append to log file: myfilelog.log
+splunk-o11y-sas: 2023/09/07 20:49:33 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:49:55 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:55 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:55 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:49:55 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:55 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:49:55 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:49:55 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:49:55 Successful append to log file: myfilelog.log
+splunk-o11y-sas: 2023/09/07 20:49:57 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:50:05 Starting gather cycle (60) for sfx source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:50:05 Received 1 events from SFX Source: prod_sfx
+splunk-o11y-sas: 2023/09/07 20:50:05 Label: prod_sfx has target of prod_splunk
+splunk-o11y-sas: 2023/09/07 20:50:05 Weve found a splunk type target for source prod_sfx
+splunk-o11y-sas: 2023/09/07 20:50:07 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
+splunk-o11y-sas: 2023/09/07 20:50:20 Starting gather cycle (25) for sfx source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:50:20 Received 1 events from SFX Source: stage_sfx
+splunk-o11y-sas: 2023/09/07 20:50:20 Label: stage_sfx has target of stage_splunk
+splunk-o11y-sas: 2023/09/07 20:50:20 Weve found a splunk type target for source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:50:20 Label: stage_sfx has target of prod_textfile
+splunk-o11y-sas: 2023/09/07 20:50:20 We've found a file type targetfor source stage_sfx
+splunk-o11y-sas: 2023/09/07 20:50:20 Sending to file target
+splunk-o11y-sas: 2023/09/07 20:50:20 Successful append to log file: myfilelog.log
+splunk-o11y-sas: 2023/09/07 20:50:22 Error sending request: Post "http://localhost:8088/services/collector": dial tcp [::1]:8088: connectex: No connection could be made because the target machine actively refused it.
