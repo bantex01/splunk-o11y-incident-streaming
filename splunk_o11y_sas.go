@@ -164,6 +164,8 @@ func main() {
 
 }
 
+//comment
+
 func initiateSourceCollection(label string, realm string, token string, cycle int, targets []string, mainWg *sync.WaitGroup) {
 
 	var typeStruct SendTarget
