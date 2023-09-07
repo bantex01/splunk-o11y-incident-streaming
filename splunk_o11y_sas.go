@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
 )
 
@@ -25,19 +27,22 @@ type Config struct {
 }
 
 type SFXSource struct {
-	Label         string   `yaml:"label"`
-	Realm         string   `yaml:"realm"`
-	Token         string   `yaml:"token"`
-	Cycle         int      `yaml:"cycle"`
-	SplunkTargets []string `yaml:"splunk_targets"`
+	Label   string   `yaml:"label"`
+	Realm   string   `yaml:"realm"`
+	Token   string   `yaml:"token"`
+	Cycle   int      `yaml:"cycle"`
+	Targets []string `yaml:"targets"`
 }
 
 type Target struct {
-	Label    string `yaml:"label"`
-	Type     string `yaml:"type"`
-	HECUrl   string `yaml:"hec_url"`
-	HECToken string `yaml:"hec_token"`
-	FileName string `yaml:"file_name"`
+	Label      string `yaml:"label"`
+	Type       string `yaml:"type"`
+	HECUrl     string `yaml:"hec_url"`
+	HECToken   string `yaml:"hec_token"`
+	FileName   string `yaml:"file_name"`
+	Source     string `yaml:"source"`
+	SourceType string `yaml:"sourcetype"`
+	Index      string `yaml:"index"`
 }
 
 type EventAnnotations struct {
@@ -93,151 +98,286 @@ type IncidentPayload struct {
 	TriggeredWhileMuted       bool    `json:"triggeredWhileMuted"`
 }
 
+type SplunkTarget struct {
+	Label      string
+	HECUrl     string
+	HECToken   string
+	Source     string
+	SourceType string
+	Index      string
+	Payload    []IncidentPayload
+}
+
+type FileTarget struct {
+	Label     string
+	FileName  string
+	Incidents []IncidentPayload
+}
+
+type SendTarget interface {
+	formatAndSend(*sync.WaitGroup)
+}
+
 var configStruct Config
+var logger *log.Logger
 
-func main() {
+func init() {
 
-	fmt.Println("Running...")
-	ReadYamlConfig("./config.yaml")
-
-	// let's set off go routines for each SFX source
-
-	var wg sync.WaitGroup
-
-	for _, sfxSource := range configStruct.SFXSources {
-		fmt.Printf("Gathering incident data for %s\n", sfxSource.Label)
-		wg.Add(1)
-		go initiateSourceCollection(sfxSource.Label, sfxSource.Realm, sfxSource.Token, sfxSource.Cycle, sfxSource.SplunkTargets, &wg)
+	logFile, err := os.OpenFile("mylog.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error opening log file:", err)
+		return
 	}
-
-	wg.Wait()
-	fmt.Println("No further processing, gracefully shutting down")
+	//defer logFile.Close()
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	logger = log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
 
 }
 
-func initiateSourceCollection(label string, realm string, token string, cycle int, splunkTargets []string, wg *sync.WaitGroup) {
+func main() {
 
+	//logger := log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
+
+	logger.Println("Running...")
+	ReadYamlConfig("./config.yaml")
+
+	go func() {
+		for {
+			http.Handle("/metrics", promhttp.Handler())
+			http.ListenAndServe(":2112", nil)
+		}
+	}()
+
+	// let's set off go routines for each SFX source
+
+	var mainWg sync.WaitGroup
+
+	for _, sfxSource := range configStruct.SFXSources {
+		logger.Printf("Gathering incident data for %s\n", sfxSource.Label)
+		mainWg.Add(1)
+		go initiateSourceCollection(sfxSource.Label, sfxSource.Realm, sfxSource.Token, sfxSource.Cycle, sfxSource.Targets, &mainWg)
+	}
+
+	mainWg.Wait()
+	logger.Println("No further processing, gracefully shutting down")
+
+}
+
+func initiateSourceCollection(label string, realm string, token string, cycle int, targets []string, mainWg *sync.WaitGroup) {
+
+	var typeStruct SendTarget
 	var incidentStruct []IncidentPayload
 	url := "https://api." + realm + ".signalfx.com/v2/incident"
 	fmt.Printf("url is %s\n", url)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
+	for range time.Tick(time.Second * time.Duration(cycle)) {
 
-	req.Header.Set("Content-Type", "application/json")
-	fmt.Printf("token is %s\n", token)
-	req.Header.Set("X-SF-TOKEN", token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	fmt.Println("Response Status:", resp.Status)
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading body:", err)
-	}
-	sb := string(body)
-	fmt.Println(sb)
-
-	err = json.Unmarshal(body, &incidentStruct)
-	if err != nil {
-		fmt.Println("Error unmarshalling:", err)
-	}
-	fmt.Printf("Received %d events\n", len(incidentStruct))
-
-	// lets send the array of incidents off to be sent to splunk
-
-	// for each target, send the payload
-	formatSendSplunk(label, splunkTargets, token, &incidentStruct)
-
-	defer wg.Done()
-}
-
-func formatSendSplunk(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
-
-	for _, target := range splunkTargets {
-		fmt.Printf("Target passed is %s\n", target)
-		for _, splunkTarget := range configStruct.SplunkTargets {
-			if target == splunkTarget.Label {
-				fmt.Printf("We've found a match on splunk target. SFX splunk target is %s - splunk target details are...\n", target)
-				fmt.Printf("Label: %s - URL: %s - HEC Token: %s\n", splunkTarget.Label, splunkTarget.HECUrl, splunkTarget.HECToken)
-			}
-		}
-
-	}
-
-	type Event struct {
-		Time       string `json:"time"`
-		Host       string `json:"host"`
-		Source     string `json:"source"`
-		Sourcetype string `json:"sourcetype"`
-		Event      string `json:"event"`
-	}
-
-	fmt.Printf("Received source %s\n", source)
-	fmt.Println(incidents)
-	for _, incident := range *incidents {
-		fmt.Printf("Detector Name: %s - Severity: %s\n", incident.DetectorName, incident.Severity)
-	}
-
-	//
-
-	now := time.Now()
-
-	for _, incident := range *incidents {
-
-		// Construct the Event data
-		hecEvent := Event{
-			Event:      "severity=" + incident.Severity + " detector_name=" + incident.DetectorName,
-			Host:       source,
-			Sourcetype: "manual",
-			Time:       now.Format("Mon Jan 2 15:04:05 MST 2006"),
-			Source:     "splunk_sas",
-		}
-
-		// Convert the event to JSON
-		eventJSON, err := json.Marshal(hecEvent)
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return
-		}
-
-		fmt.Println(eventJSON)
-
-		// Send the event to Splunk HEC
-		client := &http.Client{}
-		req, err := http.NewRequest("POST", "http://localhost:8088/services/collector", bytes.NewBuffer(eventJSON))
+		fmt.Printf("Starting cycle for sfx source %s\n", label)
+		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			fmt.Println("Error creating request:", err)
 			return
 		}
 
-		req.Header.Set("Authorization", "Splunk aa18b9dd-ea02-4c63-941b-b5f8e1061d59")
 		req.Header.Set("Content-Type", "application/json")
+		fmt.Printf("token is %s\n", token)
+		req.Header.Set("X-SF-TOKEN", token)
 
+		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Println("Error sending request:", err)
 			return
 		}
+		//defer resp.Body.Close()
 
-		defer resp.Body.Close()
-
-		// Check the response status and handle accordingly
-		if resp.StatusCode == http.StatusOK {
-			fmt.Println("Event sent successfully")
-		} else {
-			fmt.Println("Event send failed. Status code:", resp.StatusCode)
-			// You can read the response body here for more details if needed
+		fmt.Println("Response Status:", resp.Status)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("Error reading body:", err)
 		}
+		sb := string(body)
+		fmt.Println(sb)
+
+		err = json.Unmarshal(body, &incidentStruct)
+		if err != nil {
+			fmt.Println("Error unmarshalling:", err)
+		}
+		fmt.Printf("Received %d events\n", len(incidentStruct))
+
+		// lets send the array of incidents off to be sent to splunk
+
+		if len(incidentStruct) == 0 {
+			logger.Printf("No events found for label %s , sending metric and waiting for next loop...", label)
+			continue
+		}
+
+		// for each target, send the payload
+
+		var targetWg sync.WaitGroup
+		for _, targetLabel := range targets {
+			fmt.Printf("Label: %s has target of %v\n", label, targetLabel)
+			for _, target := range configStruct.Targets {
+				//typeStruct = nil
+				if target.Label == targetLabel {
+					//fmt.Printf("Found the target in config struct for %s, will need to create a struct of type %s\n", target, target.Type)
+					switch target.Type {
+					case "splunk":
+						fmt.Printf("Weve found a splunk type target, creating struct\n")
+						typeStruct = &SplunkTarget{
+							Label:      label,
+							HECUrl:     target.HECUrl,
+							HECToken:   target.HECToken,
+							Source:     target.Source,
+							SourceType: target.SourceType,
+							Index:      target.Index,
+							Payload:    incidentStruct,
+						}
+					case "file":
+						fmt.Printf("We've found a file type target, creating struct\n")
+						typeStruct = &FileTarget{
+							Label:     label,
+							FileName:  target.FileName,
+							Incidents: incidentStruct,
+						}
+					}
+				}
+
+			}
+
+			fmt.Printf("At end of loop for targets, got this struct %+v\n", typeStruct)
+
+			targetWg.Add(1)
+			go typeStruct.formatAndSend(&targetWg)
+
+		}
+
+		//formatAndSend(label, splunkTargets, token, &incidentStruct)
+
+		targetWg.Wait()
+
+	}
+	defer mainWg.Done()
+}
+
+//func (target *SplunkTarget) formatAndSend(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
+func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
+	currentTime := time.Now()
+	epochTime := currentTime.Unix()
+
+	fmt.Printf("Sending to Splunk Target\n")
+
+	type Event struct {
+		Time       int64           `json:"time"`
+		Host       string          `json:"host"`
+		Source     string          `json:"source,omitempty"`
+		SourceType string          `json:"sourcetype,omitempty"`
+		Event      IncidentPayload `json:"event"`
+		Index      string          `json:"index,omitempty"`
+	}
+
+	var batch []Event
+
+	for _, incident := range target.Payload {
+		hecEvent := Event{
+			Time:       epochTime,
+			Event:      incident,
+			Host:       target.Label,
+			SourceType: target.SourceType,
+			Source:     target.Source,
+			Index:      target.Index,
+		}
+
+		batch = append(batch, hecEvent)
+	}
+
+	// Convert the event to JSON
+	eventJSON, err := json.Marshal(batch)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return
+	}
+
+	// Send the event to Splunk HEC
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", target.HECUrl, bytes.NewBuffer(eventJSON))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	req.Header.Set("Authorization", "Splunk "+target.HECToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	// Check the response status and handle accordingly
+	if resp.StatusCode == http.StatusOK {
+		fmt.Println("Event sent successfully")
+	} else {
+		fmt.Println("Event send failed. Status code:", resp.StatusCode)
+		// You can read the response body here for more details if needed
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("Error reading body:", err)
+		}
+		sb := string(body)
+		fmt.Println(sb)
+	}
+
+}
+
+func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
+
+	defer wg.Done()
+	fmt.Printf("Sending to file target\n")
+
+	logfilePath := "myfilelog.log"
+
+	// Open the logfile for append (create it if it doesn't exist)
+	logFile, err := os.OpenFile(logfilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening logfile:", err)
+		return
+	}
+	defer logFile.Close()
+
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("2006-01-02 15:04:05")
+
+	type Event struct {
+		Time  string          `json:"time"`
+		Host  string          `json:"host"`
+		Event IncidentPayload `json:"event"`
+	}
+
+	for _, incident := range target.Incidents {
+		fileEvent := Event{
+			Time:  formattedTime,
+			Event: incident,
+			Host:  target.Label,
+		}
+
+		eventJSON, err := json.Marshal(fileEvent)
+		if err != nil {
+			fmt.Println("Error marshaling JSON:", err)
+			return
+		}
+
+		if _, err := logFile.WriteString(string(eventJSON) + "\n"); err != nil {
+			fmt.Println("Error writing to logfile:", err)
+			return
+		}
+
 	}
 
 }
