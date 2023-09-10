@@ -118,8 +118,13 @@ type SendTarget interface {
 	formatAndSend(*sync.WaitGroup)
 }
 
-var configStruct Config
-var logger *log.Logger
+var (
+	configStruct Config
+	logger       *log.Logger
+)
+
+//var	configStruct Config
+//var logger *log.Logger
 
 func init() {
 
@@ -176,36 +181,52 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	for range time.Tick(time.Second * time.Duration(cycle)) {
 
 		logger.Printf("Starting gather cycle (%d) for sfx source %s\n", cycle, label)
-		req, err := http.NewRequest("GET", url, nil)
+
+		headers := map[string]string{
+			"Content-Type": "application/json",
+			"X-SF-TOKEN":   token,
+		}
+
+		err := makeHTTPRequest("GET", url, headers, nil, &incidentStruct)
 		if err != nil {
-			logger.Println("Error creating HTTP request:", err)
+			logger.Println("Error from HTTP request:", err)
 			return
 		}
 
-		req.Header.Set("Content-Type", "application/json")
-		//fmt.Printf("token is %s\n", token)
-		req.Header.Set("X-SF-TOKEN", token)
+		/*
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				logger.Println("Error creating HTTP request:", err)
+				continue
+			}
 
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			logger.Println("Error sending HTTP request:", err)
-			return
-		}
-		//defer resp.Body.Close()
+			req.Header.Set("Content-Type", "application/json")
+			//fmt.Printf("token is %s\n", token)
+			req.Header.Set("X-SF-TOKEN", token)
 
-		//fmt.Println("Response Status:", resp.Status)
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			logger.Println("Error reading response body:", err)
-		}
-		//sb := string(body)
-		//fmt.Println(sb)
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				logger.Println("Error sending HTTP request:", err)
+				return
+			}
+			//defer resp.Body.Close()
 
-		err = json.Unmarshal(body, &incidentStruct)
-		if err != nil {
-			logger.Println("Error unmarshalling response body:", err)
-		}
+			//fmt.Println("Response Status:", resp.Status)
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				logger.Println("Error reading response body:", err)
+			}
+			//sb := string(body)
+			//fmt.Println(sb)
+
+			err = json.Unmarshal(body, &incidentStruct)
+			if err != nil {
+				logger.Println("Error unmarshalling response body:", err)
+			}
+
+		*/
+
 		logger.Printf("Received %d events from SFX Source: %s\n", len(incidentStruct), label)
 
 		// lets send the array of incidents off to be sent to splunk
@@ -263,6 +284,58 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	defer mainWg.Done()
 }
 
+func makeHTTPRequest(method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}) error {
+	// Marshal the request body if provided
+	var requestBodyBytes []byte
+	if requestBody != nil {
+		var err error
+		requestBodyBytes, err = json.Marshal(requestBody)
+		if err != nil {
+			return fmt.Errorf("failed to marshal request body: %v", err)
+		}
+	}
+
+	// Create a request
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	// Set request headers
+	for key, value := range requestHeaders {
+		req.Header.Set(key, value)
+	}
+
+	// Perform the HTTP request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to perform request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var respBody []byte
+	respBody, err = ioutil.ReadAll(resp.Body)
+	// Check the response status
+	if resp.StatusCode != http.StatusOK {
+		//return fmt.Errorf("unexpected response status: %v", resp.Status)
+		if err != nil {
+			return fmt.Errorf("unexpected response status: %v but failed to read response body: %v", resp.Status, err)
+		} else {
+			return fmt.Errorf("unexpected response status: %v - response: %s", resp.Status, string(respBody))
+		}
+	}
+
+	// Unmarshal the response into the provided struct
+
+	err = json.Unmarshal(respBody, responseStruct)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal response: %v", err)
+	}
+
+	return nil
+}
+
 //func (target *SplunkTarget) formatAndSend(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
 func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 
@@ -298,46 +371,67 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 	}
 
 	// Convert the event to JSON
-	eventJSON, err := json.Marshal(batch)
-	if err != nil {
-		logger.Println("Error marshaling JSON:", err)
-		return
-	}
+
+	//eventJSON, err := json.Marshal(batch)
+	//if err != nil {
+	//	logger.Println("Error marshaling JSON:", err)
+	//	return
+	//}
 
 	// Send the event to Splunk HEC
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", target.HECUrl, bytes.NewBuffer(eventJSON))
-	if err != nil {
-		logger.Println("Error creating request:", err)
-		return
+
+	headers := map[string]string{
+		"Content-Type":  "application/json",
+		"Authorization": "Splunk " + target.HECToken,
 	}
 
-	req.Header.Set("Authorization", "Splunk "+target.HECToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Println("Error sending request:", err)
-		return
-	} else {
-		logger.Println("Successful send to splunk")
+	var responseStruct struct {
+		Text string `json:"text"`
+		Code int    `json:"code"`
 	}
 
-	defer resp.Body.Close()
-
-	// Check the response status and handle accordingly
-	if resp.StatusCode == http.StatusOK {
-		logger.Println("Event(s) sent to HTTP event collector successfully")
+	err := makeHTTPRequest("POST", target.HECUrl, headers, batch, &responseStruct)
+	if err != nil {
+		logger.Println("Error from HTTP request:", err)
+		return
 	} else {
-		fmt.Println("Event(s) send failed to HTTP Event Collector. Status code:", resp.StatusCode)
-		// You can read the response body here for more details if needed
-		body, err := ioutil.ReadAll(resp.Body)
+		logger.Printf("HTTP Event Collector Send - Label: %s - Target: %s - Status Code: %d - Message: %s", target.Label, target.HECUrl, responseStruct.Code, responseStruct.Text)
+	}
+
+	/*
+		client := &http.Client{}
+		req, err := http.NewRequest("POST", target.HECUrl, bytes.NewBuffer(eventJSON))
 		if err != nil {
-			logger.Println("Error reading body:", err)
+			logger.Println("Error creating request:", err)
+			return
 		}
-		sb := string(body)
-		logger.Println(sb)
-	}
+
+		req.Header.Set("Authorization", "Splunk "+target.HECToken)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Println("Error sending request:", err)
+			return
+		} else {
+			logger.Println("Successful send to splunk")
+		}
+
+		defer resp.Body.Close()
+
+		// Check the response status and handle accordingly
+		if resp.StatusCode == http.StatusOK {
+			logger.Println("Event(s) sent to HTTP event collector successfully")
+		} else {
+			fmt.Println("Event(s) send failed to HTTP Event Collector. Status code:", resp.StatusCode)
+			// You can read the response body here for more details if needed
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				logger.Println("Error reading body:", err)
+			}
+			sb := string(body)
+			logger.Println(sb)
+		}*/
 
 }
 
