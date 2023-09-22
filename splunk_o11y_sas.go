@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	config_file = "/config/splunk_o11y_sas.yaml"
+	config_file = "config/splunk_o11y_sas.yaml"
 	log_file    = "splunk_o11y_sas.log"
 )
 
@@ -244,10 +244,12 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 		var targetWg sync.WaitGroup
 		for _, targetLabel := range targets {
+			targetFound := false
 			logger.Printf("Label: %s has target of %v\n", label, targetLabel)
 			for _, target := range configStruct.Targets {
 				//typeStruct = nil
 				if target.Label == targetLabel {
+					targetFound = true
 					//fmt.Printf("Found the target in config struct for %s, will need to create a struct of type %s\n", target, target.Type)
 					switch target.Type {
 					case "splunk":
@@ -273,10 +275,17 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 			}
 
+			if !targetFound {
+				logger.Printf("No target with label %s has been found", targetLabel)
+			} else {
+				targetWg.Add(1)
+				go typeStruct.formatAndSend(&targetWg)
+			}
+
 			//fmt.Printf("At end of loop for targets, got this struct %+v\n", typeStruct)
 
-			targetWg.Add(1)
-			go typeStruct.formatAndSend(&targetWg)
+			//targetWg.Add(1)
+			//go typeStruct.formatAndSend(&targetWg)
 
 		}
 
@@ -447,9 +456,9 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	defer wg.Done()
-	logger.Printf("Sending to file target\n")
+	logger.Printf("Label: %s - Attempting to send incident data to %s\n", target.Label, target.FileName)
 
-	logfilePath := "myfilelog.log"
+	logfilePath := target.FileName
 
 	// Open the logfile for append (create it if it doesn't exist)
 	logFile, err := os.OpenFile(logfilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -484,11 +493,11 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 		if _, err := logFile.WriteString(string(eventJSON) + "\n"); err != nil {
 			logger.Println("Error writing to logfile:", err)
 			return
-		} else {
-			logger.Printf("Successful append to log file: %s", logfilePath)
 		}
 
 	}
+
+	logger.Printf("Label: %s - Successful incident data append to %s\n", target.Label, target.FileName)
 
 }
 
