@@ -2,13 +2,13 @@
 sfx_sources:
 - label: tinman_sfx
   realm: eu0
-  token: NM76t62cT-dSWpqgWOdHcA
+  token: token
   cycle: 60
   targets:
   - prod_splunk
 - label: stage_sfx
   realm: eu0
-  token: NM76t62cT-dSWpqgWOdHcA
+  token: token
   cycle: 25
   targets:
   - stage_splunk
@@ -17,14 +17,14 @@ targets:
 - label: prod_splunk
   type: splunk
   hec_url: http://localhost:8088/services/collector
-  hec_token: aa18b9dd-ea02-4c63-941b-b5f8e1061d59
+  hec_token: token
   source: splunk_sas
   sourcetype: alex_st
   index: alex_test
 - label: stage_splunk
   type: splunk
   hec_url: https://10.202.4.238:8088/services/collector
-  hec_token: 36a372df-7298-4b73-b5ca-009b1a97ffb6  
+  hec_token: token  
 - label: prod_textfile
   type: file
   file_name: /alex.txt
