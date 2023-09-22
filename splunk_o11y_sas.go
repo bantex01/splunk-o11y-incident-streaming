@@ -2,13 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"fmt"
@@ -19,6 +18,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	config_file = "/config/splunk_o11y_sas.yaml"
+	log_file    = "splunk_o11y_sas.log"
 )
 
 type Config struct {
@@ -128,7 +132,7 @@ var (
 
 func init() {
 
-	logFile, err := os.OpenFile("mylog.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(log_file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Println("Error opening log file:", err)
 		return
@@ -144,7 +148,7 @@ func main() {
 	//logger := log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
 
 	logger.Println("Starting splunk_o11y_sas service...")
-	ReadYamlConfig("./config.yaml")
+	ReadYamlConfig(config_file)
 
 	go func() {
 		for {
@@ -295,6 +299,11 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 		}
 	}
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // This disables certificate verification
+	}
+	client := &http.Client{Transport: tr}
+
 	// Create a request
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBodyBytes))
 	if err != nil {
@@ -307,7 +316,7 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 	}
 
 	// Perform the HTTP request
-	client := &http.Client{}
+	//client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %v", err)
@@ -336,7 +345,7 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 	return nil
 }
 
-//func (target *SplunkTarget) formatAndSend(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
+// func (target *SplunkTarget) formatAndSend(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
 func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	defer wg.Done()
@@ -486,11 +495,11 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 func ReadYamlConfig(f string) {
 
 	file := f
-	//fmt.Printf("Reading config file %s\n", filePath)
-	fileBase := filepath.Base(file)
+	fmt.Printf("Reading config file %s\n", file)
+	//fileBase := filepath.Base(file)
 	//fmt.Printf("file base is %s\n", fileBase)
 
-	yamlFile, err := ioutil.ReadFile(fileBase)
+	yamlFile, err := ioutil.ReadFile(f)
 	if err != nil {
 		logger.Printf("yamlFile.Get err   #%v ", err)
 		os.Exit(1)
@@ -498,13 +507,15 @@ func ReadYamlConfig(f string) {
 
 	// Lets make sure we unmarshal to the right struct depending on the arg sent to the function
 
-	if strings.Contains(fileBase, "config.yaml") {
-		//fmt.Println("event conf file found")
-		err = yaml.Unmarshal(yamlFile, &configStruct)
-		if err != nil {
-			logger.Fatalf("Unmarshal: %v", err)
-		}
-		//fmt.Println(configStruct)
+	//if strings.Contains(f, "splunk-o11y-sas.yaml") {
+	//fmt.Println("event conf file found")
+	err = yaml.Unmarshal(yamlFile, &configStruct)
+	if err != nil {
+		logger.Fatalf("Unmarshal: %v", err)
 	}
+	//fmt.Println(configStruct)
+	//} else {
+	//logger.Println("Dunno")
+	//}
 
 }
