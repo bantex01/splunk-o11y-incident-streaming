@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"fmt"
@@ -47,6 +48,7 @@ type Target struct {
 	Source     string `yaml:"source"`
 	SourceType string `yaml:"sourcetype"`
 	Index      string `yaml:"index"`
+	SSLVerify  bool   `yaml:"ssl_insecure_skip_verify"`
 }
 
 type EventAnnotations struct {
@@ -110,6 +112,7 @@ type SplunkTarget struct {
 	SourceType string
 	Index      string
 	Payload    []IncidentPayload
+	SSLVerify  bool
 }
 
 type FileTarget struct {
@@ -126,9 +129,6 @@ var (
 	configStruct Config
 	logger       *log.Logger
 )
-
-//var	configStruct Config
-//var logger *log.Logger
 
 func init() {
 
@@ -191,45 +191,11 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 			"X-SF-TOKEN":   token,
 		}
 
-		err := makeHTTPRequest("GET", url, headers, nil, &incidentStruct)
+		err := makeHTTPRequest("GET", url, headers, nil, &incidentStruct, true)
 		if err != nil {
 			logger.Println("Error from HTTP request:", err)
 			return
 		}
-
-		/*
-			req, err := http.NewRequest("GET", url, nil)
-			if err != nil {
-				logger.Println("Error creating HTTP request:", err)
-				continue
-			}
-
-			req.Header.Set("Content-Type", "application/json")
-			//fmt.Printf("token is %s\n", token)
-			req.Header.Set("X-SF-TOKEN", token)
-
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				logger.Println("Error sending HTTP request:", err)
-				return
-			}
-			//defer resp.Body.Close()
-
-			//fmt.Println("Response Status:", resp.Status)
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				logger.Println("Error reading response body:", err)
-			}
-			//sb := string(body)
-			//fmt.Println(sb)
-
-			err = json.Unmarshal(body, &incidentStruct)
-			if err != nil {
-				logger.Println("Error unmarshalling response body:", err)
-			}
-
-		*/
 
 		logger.Printf("Received %d events from SFX Source: %s\n", len(incidentStruct), label)
 
@@ -253,7 +219,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 					//fmt.Printf("Found the target in config struct for %s, will need to create a struct of type %s\n", target, target.Type)
 					switch target.Type {
 					case "splunk":
-						logger.Printf("We've found a splunk type target for source %s\n", label)
+						logger.Printf("Found a splunk type target for source %s\n", label)
 						typeStruct = &SplunkTarget{
 							Label:      label,
 							HECUrl:     target.HECUrl,
@@ -262,9 +228,10 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 							SourceType: target.SourceType,
 							Index:      target.Index,
 							Payload:    incidentStruct,
+							SSLVerify:  target.SSLVerify,
 						}
 					case "file":
-						logger.Printf("We've found a file type target for source %s\n", label)
+						logger.Printf("Found a file type target for source %s\n", label)
 						typeStruct = &FileTarget{
 							Label:     label,
 							FileName:  target.FileName,
@@ -282,14 +249,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 				go typeStruct.formatAndSend(&targetWg)
 			}
 
-			//fmt.Printf("At end of loop for targets, got this struct %+v\n", typeStruct)
-
-			//targetWg.Add(1)
-			//go typeStruct.formatAndSend(&targetWg)
-
 		}
-
-		//formatAndSend(label, splunkTargets, token, &incidentStruct)
 
 		targetWg.Wait()
 
@@ -297,9 +257,12 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	defer mainWg.Done()
 }
 
-func makeHTTPRequest(method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}) error {
+func makeHTTPRequest(method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}, insecureSkipFlag bool) error {
 	// Marshal the request body if provided
 	var requestBodyBytes []byte
+	var tr *http.Transport
+	var client *http.Client
+
 	if requestBody != nil {
 		var err error
 		requestBodyBytes, err = json.Marshal(requestBody)
@@ -308,10 +271,14 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 		}
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // This disables certificate verification
+	if strings.Contains(url, "https") {
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipFlag}, // This disables certificate verification
+		}
+		client = &http.Client{Transport: tr}
+	} else {
+		client = &http.Client{}
 	}
-	client := &http.Client{Transport: tr}
 
 	// Create a request
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(requestBodyBytes))
@@ -354,15 +321,12 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 	return nil
 }
 
-// func (target *SplunkTarget) formatAndSend(source string, splunkTargets []string, token string, incidents *[]IncidentPayload) {
 func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
 	currentTime := time.Now()
 	epochTime := currentTime.Unix()
-
-	//logger.Printf("Sending to Splunk Target\n")
 
 	type Event struct {
 		Time       int64           `json:"time"`
@@ -388,16 +352,6 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 		batch = append(batch, hecEvent)
 	}
 
-	// Convert the event to JSON
-
-	//eventJSON, err := json.Marshal(batch)
-	//if err != nil {
-	//	logger.Println("Error marshaling JSON:", err)
-	//	return
-	//}
-
-	// Send the event to Splunk HEC
-
 	headers := map[string]string{
 		"Content-Type":  "application/json",
 		"Authorization": "Splunk " + target.HECToken,
@@ -408,48 +362,13 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 		Code int    `json:"code"`
 	}
 
-	err := makeHTTPRequest("POST", target.HECUrl, headers, batch, &responseStruct)
+	err := makeHTTPRequest("POST", target.HECUrl, headers, batch, &responseStruct, target.SSLVerify)
 	if err != nil {
 		logger.Println("Error from HTTP request:", err)
 		return
 	} else {
 		logger.Printf("HTTP Event Collector Send - Label: %s - Target: %s - Status Code: %d - Message: %s", target.Label, target.HECUrl, responseStruct.Code, responseStruct.Text)
 	}
-
-	/*
-		client := &http.Client{}
-		req, err := http.NewRequest("POST", target.HECUrl, bytes.NewBuffer(eventJSON))
-		if err != nil {
-			logger.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Set("Authorization", "Splunk "+target.HECToken)
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			logger.Println("Error sending request:", err)
-			return
-		} else {
-			logger.Println("Successful send to splunk")
-		}
-
-		defer resp.Body.Close()
-
-		// Check the response status and handle accordingly
-		if resp.StatusCode == http.StatusOK {
-			logger.Println("Event(s) sent to HTTP event collector successfully")
-		} else {
-			fmt.Println("Event(s) send failed to HTTP Event Collector. Status code:", resp.StatusCode)
-			// You can read the response body here for more details if needed
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				logger.Println("Error reading body:", err)
-			}
-			sb := string(body)
-			logger.Println(sb)
-		}*/
 
 }
 
@@ -460,7 +379,6 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 
 	logfilePath := target.FileName
 
-	// Open the logfile for append (create it if it doesn't exist)
 	logFile, err := os.OpenFile(logfilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Println("Error opening logfile:", err)
@@ -494,7 +412,6 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 			logger.Println("Error writing to logfile:", err)
 			return
 		}
-
 	}
 
 	logger.Printf("Label: %s - Successful incident data append to %s\n", target.Label, target.FileName)
@@ -505,8 +422,6 @@ func ReadYamlConfig(f string) {
 
 	file := f
 	fmt.Printf("Reading config file %s\n", file)
-	//fileBase := filepath.Base(file)
-	//fmt.Printf("file base is %s\n", fileBase)
 
 	yamlFile, err := ioutil.ReadFile(f)
 	if err != nil {
@@ -516,15 +431,9 @@ func ReadYamlConfig(f string) {
 
 	// Lets make sure we unmarshal to the right struct depending on the arg sent to the function
 
-	//if strings.Contains(f, "splunk-o11y-sas.yaml") {
-	//fmt.Println("event conf file found")
 	err = yaml.Unmarshal(yamlFile, &configStruct)
 	if err != nil {
 		logger.Fatalf("Unmarshal: %v", err)
 	}
-	//fmt.Println(configStruct)
-	//} else {
-	//logger.Println("Dunno")
-	//}
 
 }
