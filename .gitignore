@@ -1,3 +1,4 @@
 myfilelog.log
 mylog.log
-config.yaml
+**/config
+.dockerignore
