@@ -17,9 +17,6 @@ RUN chmod 777 /config
 FROM scratch
 COPY --from=builder /go/bin/splunk_o11y_sas /go/bin/splunk_o11y_sas
 
-#RUN mkdir /config
-#RUN chmod 777 /config
-
 ENTRYPOINT ["/go/bin/splunk_o11y_sas"]
 
 

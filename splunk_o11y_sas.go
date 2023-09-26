@@ -258,7 +258,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 }
 
 func makeHTTPRequest(method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}, insecureSkipFlag bool) error {
-	// Marshal the request body if provided
+
 	var requestBodyBytes []byte
 	var tr *http.Transport
 	var client *http.Client
@@ -292,7 +292,6 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 	}
 
 	// Perform the HTTP request
-	//client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to perform request: %v", err)
@@ -303,15 +302,12 @@ func makeHTTPRequest(method, url string, requestHeaders map[string]string, reque
 	respBody, err = ioutil.ReadAll(resp.Body)
 	// Check the response status
 	if resp.StatusCode != http.StatusOK {
-		//return fmt.Errorf("unexpected response status: %v", resp.Status)
 		if err != nil {
 			return fmt.Errorf("unexpected response status: %v but failed to read response body: %v", resp.Status, err)
 		} else {
 			return fmt.Errorf("unexpected response status: %v - response: %s", resp.Status, string(respBody))
 		}
 	}
-
-	// Unmarshal the response into the provided struct
 
 	err = json.Unmarshal(respBody, responseStruct)
 	if err != nil {
@@ -428,8 +424,6 @@ func ReadYamlConfig(f string) {
 		logger.Printf("yamlFile.Get err   #%v ", err)
 		os.Exit(1)
 	}
-
-	// Lets make sure we unmarshal to the right struct depending on the arg sent to the function
 
 	err = yaml.Unmarshal(yamlFile, &configStruct)
 	if err != nil {
