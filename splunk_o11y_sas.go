@@ -134,7 +134,7 @@ func init() {
 
 	logFile, err := os.OpenFile(log_file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		fmt.Println("Error opening log file:", err)
+		logger.Println("Error opening log file:", err)
 		return
 	}
 	//defer logFile.Close()
@@ -163,7 +163,7 @@ func main() {
 	var mainWg sync.WaitGroup
 
 	for _, sfxSource := range configStruct.SFXSources {
-		logger.Printf("Found SFX source with detail - Label: %s - SFXRealm: %s - Gather Cycle Time: %d - Target List %v\n", sfxSource.Label, sfxSource.Realm, sfxSource.Cycle, sfxSource.Targets)
+		logger.Printf("SFX source - Label: %s - SFXRealm: %s - Gather Cycle Time: %d - Target List %v\n", sfxSource.Label, sfxSource.Realm, sfxSource.Cycle, sfxSource.Targets)
 		mainWg.Add(1)
 		go initiateSourceCollection(sfxSource.Label, sfxSource.Realm, sfxSource.Token, sfxSource.Cycle, sfxSource.Targets, &mainWg)
 	}
@@ -210,16 +210,16 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 		var targetWg sync.WaitGroup
 		for _, targetLabel := range targets {
-			targetFound := false
+			//targetFound := false
 			logger.Printf("Label: %s has target of %v\n", label, targetLabel)
 			for _, target := range configStruct.Targets {
 				//typeStruct = nil
 				if target.Label == targetLabel {
-					targetFound = true
+					//targetFound = true
 					//fmt.Printf("Found the target in config struct for %s, will need to create a struct of type %s\n", target, target.Type)
 					switch target.Type {
 					case "splunk":
-						logger.Printf("Found a splunk type target for source %s\n", label)
+						//logger.Printf("Found a splunk type target for source %s\n", label)
 						typeStruct = &SplunkTarget{
 							Label:      label,
 							HECUrl:     target.HECUrl,
@@ -231,7 +231,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 							SSLVerify:  target.SSLVerify,
 						}
 					case "file":
-						logger.Printf("Found a file type target for source %s\n", label)
+						//logger.Printf("Found a file type target for source %s\n", label)
 						typeStruct = &FileTarget{
 							Label:     label,
 							FileName:  target.FileName,
@@ -242,12 +242,15 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 			}
 
-			if !targetFound {
-				logger.Printf("No target with label %s has been found", targetLabel)
-			} else {
-				targetWg.Add(1)
-				go typeStruct.formatAndSend(&targetWg)
-			}
+			targetWg.Add(1)
+			go typeStruct.formatAndSend(&targetWg)
+
+			//if !targetFound {
+			//	logger.Printf("No target with label %s has been found", targetLabel)
+			//} else {
+			//	targetWg.Add(1)
+			//	go typeStruct.formatAndSend(&targetWg)
+			//}
 
 		}
 
@@ -417,7 +420,7 @@ func (target *FileTarget) formatAndSend(wg *sync.WaitGroup) {
 func ReadYamlConfig(f string) {
 
 	file := f
-	fmt.Printf("Reading config file %s\n", file)
+	logger.Printf("Reading config file %s\n", file)
 
 	yamlFile, err := ioutil.ReadFile(f)
 	if err != nil {
@@ -428,6 +431,72 @@ func ReadYamlConfig(f string) {
 	err = yaml.Unmarshal(yamlFile, &configStruct)
 	if err != nil {
 		logger.Fatalf("Unmarshal: %v", err)
+	}
+
+	for ind, item := range configStruct.SFXSources {
+		if item.Realm == "" {
+			logger.Fatalf("SFX Source %s requires a realm setting", item.Label)
+		}
+		if item.Token == "" {
+			logger.Fatalf("SFX Source %s requires a SFX token", item.Label)
+		}
+		if item.Cycle == 0 {
+			configStruct.SFXSources[ind].Cycle = 60
+			logger.Printf("SFX Source %s has no cycle time set, default set to 60 seconds", item.Label)
+		}
+		if len(item.Targets) < 1 {
+			logger.Fatalf("SFX Source %s has no targets defined, you must set at least one target", item.Label)
+		} else {
+			for _, sourceTarget := range item.Targets {
+				targetFound := false
+				for _, taritem := range configStruct.Targets {
+					if sourceTarget == taritem.Label {
+						logger.Printf("SFX Source %s has a source target %s - match found in targets", item.Label, sourceTarget)
+						targetFound = true
+					}
+				}
+				if !targetFound {
+					logger.Fatalf("SFX Source %s has a target of %s that is not defined", item.Label, sourceTarget)
+				}
+
+			}
+		}
+
+	}
+
+	for _, target := range configStruct.Targets {
+		switch target.Type {
+		case "splunk":
+			logger.Printf("Splunk target %s found, checking required configiuration", target.Label)
+			if target.HECUrl == "" {
+				logger.Fatalf("Splunk target %s requires a HEC Url to be supplied", target.Label)
+			}
+			if target.HECToken == "" {
+				logger.Fatalf("Splunk target %s requires a HEC Token to be supplied", target.Label)
+			}
+			if target.Source == "" {
+				logger.Printf("Splunk target %s has no source specified, source will be dictated by splunk settings server-side", target.Label)
+			}
+			if target.Index == "" {
+				logger.Printf("Splunk target %s has no index specified, index will be determined by splunk settings server-side", target.Label)
+			} else {
+				logger.Printf("Splunk target %s has an index specified, ensure the index exists and the HEC input allows data to be sent to it", target.Label)
+			}
+			if target.SourceType == "" {
+				logger.Printf("Splunk target %s has no sourcetype specified, sourcetype will be determined by splunk settings server-side", target.Label)
+			} else {
+				logger.Printf("Splunk target %s has a sourcetype specified, ensure the sourcetype exists for successful parsing", target.Label)
+			}
+		case "file":
+			logger.Printf("File target %s found, checking required configuration", target.Label)
+			if target.FileName == "" {
+				logger.Fatalf("File target %s requires file name to be specified", target.Label)
+			}
+		default:
+			logger.Printf("An unknown target type of %s has been found, only \"splunk\" and \"file\" types are allowed", target.Type)
+
+		}
+
 	}
 
 }
