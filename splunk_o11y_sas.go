@@ -17,6 +17,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
 )
@@ -128,6 +129,30 @@ type SendTarget interface {
 var (
 	configStruct Config
 	logger       *log.Logger
+
+	SFXIncidentRequestDuration = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "so11y_sas_sfx_incident_http_request_duration_seconds",
+			Help: "Duration of HTTP request to SFX to pull incidents in seconds",
+		},
+		[]string{"source"},
+	)
+
+	SFXIncidentCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "so11y_sas_sfx_incident_count",
+			Help: "Count of incidents returned from SFX source",
+		},
+		[]string{"source"},
+	)
+
+	httpRequestErrorCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "so11y_sas_http_request_error_total",
+			Help: "Total number of http request errors",
+		},
+		[]string{"source"}, // You can add additional labels as needed
+	)
 )
 
 func init() {
@@ -140,6 +165,10 @@ func init() {
 	//defer logFile.Close()
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	logger = log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
+
+	prometheus.MustRegister(SFXIncidentRequestDuration)
+	prometheus.MustRegister(SFXIncidentCount)
+	prometheus.MustRegister(httpRequestErrorCounter)
 
 }
 
@@ -181,6 +210,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	var incidentStruct []IncidentPayload
 	url := "https://api." + realm + ".signalfx.com/v2/incident"
 	//fmt.Printf("url is %s\n", url)
+	http_label := label + "_http_request"
 
 	for range time.Tick(time.Second * time.Duration(cycle)) {
 
@@ -191,13 +221,21 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 			"X-SF-TOKEN":   token,
 		}
 
-		err := makeHTTPRequest("GET", url, headers, nil, &incidentStruct, true)
+		start := time.Now()
+		err := makeHTTPRequest(http_label, "GET", url, headers, nil, &incidentStruct, false)
 		if err != nil {
+			httpRequestErrorCounter.WithLabelValues(http_label).Inc()
 			logger.Println("Error from HTTP request:", err)
-			return
+			continue
 		}
 
+		SFXIncidentRequestDuration.WithLabelValues(label).Set(time.Since(start).Seconds())
+		// I would like a metric here that has measured how long the http request has taken to return
+
 		logger.Printf("Received %d events from SFX Source: %s\n", len(incidentStruct), label)
+
+		// I would like a gauge metric here to that has the count of events returned
+		SFXIncidentCount.WithLabelValues(label).Set(float64(len(incidentStruct)))
 
 		// lets send the array of incidents off to be sent to splunk
 
@@ -245,13 +283,6 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 			targetWg.Add(1)
 			go typeStruct.formatAndSend(&targetWg)
 
-			//if !targetFound {
-			//	logger.Printf("No target with label %s has been found", targetLabel)
-			//} else {
-			//	targetWg.Add(1)
-			//	go typeStruct.formatAndSend(&targetWg)
-			//}
-
 		}
 
 		targetWg.Wait()
@@ -260,7 +291,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 	defer mainWg.Done()
 }
 
-func makeHTTPRequest(method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}, insecureSkipFlag bool) error {
+func makeHTTPRequest(label string, method, url string, requestHeaders map[string]string, requestBody interface{}, responseStruct interface{}, insecureSkipFlag bool) error {
 
 	var requestBodyBytes []byte
 	var tr *http.Transport
@@ -361,9 +392,11 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 		Code int    `json:"code"`
 	}
 
-	err := makeHTTPRequest("POST", target.HECUrl, headers, batch, &responseStruct, target.SSLVerify)
+	http_label := "splunk_send_http_request"
+	err := makeHTTPRequest(http_label, "POST", target.HECUrl, headers, batch, &responseStruct, target.SSLVerify)
 	if err != nil {
 		logger.Println("Error from HTTP request:", err)
+		httpRequestErrorCounter.WithLabelValues(http_label).Inc()
 		return
 	} else {
 		logger.Printf("HTTP Event Collector Send - Label: %s - Target: %s - Status Code: %d - Message: %s", target.Label, target.HECUrl, responseStruct.Code, responseStruct.Text)
@@ -486,6 +519,9 @@ func ReadYamlConfig(f string) {
 				logger.Printf("Splunk target %s has no sourcetype specified, sourcetype will be determined by splunk settings server-side", target.Label)
 			} else {
 				logger.Printf("Splunk target %s has a sourcetype specified, ensure the sourcetype exists for successful parsing", target.Label)
+			}
+			if !target.SSLVerify {
+				logger.Printf("Splunk target %s has no ssl_insecure_skip_verify specified, default set to \"false\"", target.Label)
 			}
 		case "file":
 			logger.Printf("File target %s found, checking required configuration", target.Label)
