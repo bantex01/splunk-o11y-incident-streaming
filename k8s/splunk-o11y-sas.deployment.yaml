@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: splunk-o11y-sas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: splunk-o11y-sas
+  template:
+    metadata:
+      labels:
+        app: splunk-o11y-sas
+      annotations:
+        sidecar.opentelemetry.io/inject: "splunk-o11y-sas-otel-collector"
+    spec:
+      volumes:
+        - name: splunk-o11y-sas-config-file-volume
+          secret:
+            secretName: splunk-o11y-sas-config-file
+      containers:
+        - name: splunk-o11y-sas
+          image: bantex01docker/splunk-o11y-sas
+          volumeMounts:
+            - name: splunk-o11y-sas-config-file-volume
+              mountPath: /config
