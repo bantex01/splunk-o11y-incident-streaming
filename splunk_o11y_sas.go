@@ -307,7 +307,7 @@ func makeHTTPRequest(label string, method, url string, requestHeaders map[string
 
 	if strings.Contains(url, "https") {
 		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipFlag}, // This disables certificate verification
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipFlag}, // This potentially disables certificate verification
 		}
 		client = &http.Client{Transport: tr}
 	} else {
@@ -334,7 +334,6 @@ func makeHTTPRequest(label string, method, url string, requestHeaders map[string
 
 	var respBody []byte
 	respBody, err = ioutil.ReadAll(resp.Body)
-	// Check the response status
 	if resp.StatusCode != http.StatusOK {
 		if err != nil {
 			return fmt.Errorf("unexpected response status: %v but failed to read response body: %v", resp.Status, err)
