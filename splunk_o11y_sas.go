@@ -208,8 +208,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 
 	var typeStruct SendTarget
 	var incidentStruct []IncidentPayload
-	url := "https://api." + realm + ".signalfx.com/v2/incident"
-	//fmt.Printf("url is %s\n", url)
+	url := "https://api." + realm + ".signalfx.com/v2/incident?limit=10000"
 	http_label := label + "_http_request"
 
 	for range time.Tick(time.Second * time.Duration(cycle)) {
@@ -230,11 +229,9 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 		}
 
 		SFXIncidentRequestDuration.WithLabelValues(label).Set(time.Since(start).Seconds())
-		// I would like a metric here that has measured how long the http request has taken to return
 
 		logger.Printf("Received %d events from SFX Source: %s\n", len(incidentStruct), label)
 
-		// I would like a gauge metric here to that has the count of events returned
 		SFXIncidentCount.WithLabelValues(label).Set(float64(len(incidentStruct)))
 
 		// lets send the array of incidents off to be sent to splunk
