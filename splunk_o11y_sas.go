@@ -3,19 +3,16 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
-
-	"fmt"
-
 	"sync"
-
-	"encoding/json"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
