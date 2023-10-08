@@ -52,57 +52,32 @@ type Target struct {
 	SSLVerify  bool   `yaml:"ssl_insecure_skip_verify"`
 }
 
-type EventAnnotations struct {
-	FireThreshold    string `json:"fire_threshold"`
-	ResourceType     string `json:"resource_type"`
-	SFUIIncidentInfo string `json:"sfui_incidentInformation"`
-}
-
-type Inputs struct {
-	Key   Key   `json:"_S1"`
-	Value Value `json:"_S2"`
-}
-
-type Key struct {
-	Location   string `json:"location"`
-	LocationID string `json:"location_id"`
-	SFMetric   string `json:"sf_metric"`
-	Test       string `json:"test"`
-	TestID     string `json:"test_id"`
-	TestType   string `json:"test_type"`
-}
-
-type Value struct {
-	Value string `json:"value"`
+type IncidentPayload struct {
+	Active                    bool                    `json:"active,omitempty"`
+	AnomalyState              string                  `json:"anomalyState,omitempty"`
+	DetectLabel               string                  `json:"detectLabel,omitempty"`
+	DetectorId                string                  `json:"detectorId,omitempty"`
+	DetectorName              string                  `json:"detectorName,omitempty"`
+	Events                    []*Event                `json:"events,omitempty"`
+	IncidentId                string                  `json:"incidentId,omitempty"`
+	Inputs                    *map[string]interface{} `json:"inputs,omitempty"`
+	Severity                  string                  `json:"severity,omitempty"`
+	IsMuted                   bool                    `json:"isMuted,omitempty"`
+	TriggeredNotificationSent bool                    `json:"triggeredNotificationSent,omitempty"`
+	TriggeredWhileMuted       bool                    `json:"triggeredWhileMuted,omitempty"`
 }
 
 type Event struct {
-	AnomalyState     string           `json:"anomalyState"`
-	DetectLabel      string           `json:"detectLabel"`
-	DetectorID       string           `json:"detectorId"`
-	DetectorName     string           `json:"detectorName"`
-	EventAnnotations EventAnnotations `json:"event_annotations"`
-	ID               string           `json:"id"`
-	IncidentID       string           `json:"incidentId"`
-	Inputs           Inputs           `json:"inputs"`
-	LinkedTeams      interface{}      `json:"linkedTeams"`
-	Severity         string           `json:"severity"`
-	Timestamp        int64            `json:"timestamp"`
-}
-
-type IncidentPayload struct {
-	Active                    bool    `json:"active"`
-	AnomalyState              string  `json:"anomalyState"`
-	DetectLabel               string  `json:"detectLabel"`
-	DetectorID                string  `json:"detectorId"`
-	DetectorName              string  `json:"detectorName"`
-	DisplayBody               string  `json:"displayBody"`
-	Events                    []Event `json:"events"`
-	IncidentID                string  `json:"incidentId"`
-	IsMuted                   bool    `json:"isMuted"`
-	Severity                  string  `json:"severity"`
-	TriggeredNotificationSent bool    `json:"triggeredNotificationSent"`
-	TriggeredWhileMuted       bool    `json:"triggeredWhileMuted"`
+	AnomalyState     string                  `json:"anomalyState,omitempty"`
+	DetectLabel      string                  `json:"detectLabel,omitempty"`
+	DetectorId       string                  `json:"detectorId,omitempty"`
+	DetectorName     string                  `json:"detectorName,omitempty"`
+	EventAnnotations *map[string]interface{} `json:"event_annotations,omitempty"`
+	Id               string                  `json:"id,omitempty"`
+	IncidentId       string                  `json:"incidentId,omitempty"`
+	Inputs           *map[string]interface{} `json:"inputs,omitempty"`
+	Severity         string                  `json:"severity,omitempty"`
+	Timestamp        int64                   `json:"timestamp,omitempty"`
 }
 
 type SplunkTarget struct {
