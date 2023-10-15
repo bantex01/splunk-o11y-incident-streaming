@@ -198,3 +198,11 @@ targets:
   type: file
   file_name: splunk_o11y_sas_prod.out
 ```
+
+## Observability
+
+The program emits the following metrics in the prometheus exposition format on port 2112 at the /metrics endpoint:
+
+- so11y_sas_sfx_incident_http_request_duration_seconds - A gauge that displays the request duration is seconds to Splunk Observability to gather the incident payload
+- so11y_sas_sfx_incident_count - A gauge that displays the number of incidents received from the Splunk Observability source
+- so11y_sas_http_request_error_total - A counter displaying the total number of HTTP request errors
