@@ -212,7 +212,8 @@ The program emits the following metrics in the prometheus exposition format on p
 
 To run the program in a docker container issue the following command:
 
-```docker run -v ./config/splunk_o11y_sas.yaml:/config/splunk_o11y_sas.yaml bantex01docker/splunk-o11y-sas
+```
+docker run -v ./config/splunk_o11y_sas.yaml:/config/splunk_o11y_sas.yaml bantex01docker/splunk-o11y-sas
 ```
 
 Obviously, this assumes you have the splunk_o11y_sas.yaml configuration file in your current directory.
