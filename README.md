@@ -12,7 +12,7 @@ This is an alternative to the official Splunk o11y supplied web-hook to send inc
 
  ### Configuration
 
-A configuration file called splunk_o11y_sas.yaml is required.
+A configuration file called splunk_o11y_sas.yaml is required and the program expects the confgiruation to be present in a config directory in the same path as the go executable.
 
 The table below details the configurable options:
 
@@ -206,3 +206,13 @@ The program emits the following metrics in the prometheus exposition format on p
 - so11y_sas_sfx_incident_http_request_duration_seconds - A gauge that displays the request duration is seconds to Splunk Observability to gather the incident payload
 - so11y_sas_sfx_incident_count - A gauge that displays the number of incidents received from the Splunk Observability source
 - so11y_sas_http_request_error_total - A counter displaying the total number of HTTP request errors
+
+
+## Docker
+
+To run the program in a docker container issue the following command:
+
+```docker run -v ./config/splunk_o11y_sas.yaml:/config/splunk_o11y_sas.yaml bantex01docker/splunk-o11y-sas
+```
+
+Obviously, this assumes you have the splunk_o11y_sas.yaml configuration file in your current directory.
