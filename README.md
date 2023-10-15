@@ -173,7 +173,6 @@ sfx_sources:
   cycle: 60
   targets:
   - dev_splunk
-  - dev_textfile
 - label: splunk_o11y_prod
   realm: eu0
   token: some_token
