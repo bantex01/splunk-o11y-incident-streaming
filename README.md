@@ -1,6 +1,6 @@
 # Splunk Observability Incident Streaming Service
 
-This image contains the splunk-o11y-incident-streaming go program - Source code can be found [here](https://github.com/bantex01/splunk-o11y-incident-streaming). The image will continually (configurable)  send a stream of open incident data to as many Splunk Enterprise targets as required. 
+This repository contains the splunk-o11y-incident-streaming go code. The program will continually (configurable) send a stream of open splunk o11y incident data to as many Splunk Enterprise targets as required. 
 
 ## Details
 
@@ -161,3 +161,41 @@ The table below details the configurable options:
     <td>/splunk_o11y_sas/incident.out</td>
   </tr>
 </table>
+
+Here is a sample of the configuration:
+
+```
+---
+sfx_sources:
+- label: splunk_o11y_dev
+  realm: us1
+  token: some_token
+  cycle: 60
+  targets:
+  - dev_splunk
+  - dev_textfile
+- label: splunk_o11y_prod
+  realm: eu0
+  token: some_token
+  cycle: 30
+  targets:
+  - prod_splunk
+  - prod_textfile
+targets:
+- label: prod_splunk
+  type: splunk
+  hec_url: https://1.1.1.1:8088/services/collector
+  hec_token: some_token
+  source: splunk_sas
+  sourcetype: splunk_sas_st
+  index: splunk_o11y_events
+  ssl_insecure_skip_verify: true
+- label: dev_splunk
+  type: splunk
+  hec_url: https://1.1.1.2:8088/services/collector
+  hec_token: some_token
+  ssl_insecure_skip_verify: true
+- label: prod_textfile
+  type: file
+  file_name: splunk_o11y_sas_prod.out
+```
