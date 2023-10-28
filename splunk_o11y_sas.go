@@ -152,7 +152,6 @@ func main() {
 	//logger := log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
 
 	logger.Println("Starting splunk_o11y_sas service...")
-	logger.Println("GitHub Action test")
 	ReadYamlConfig(config_file)
 
 	go func() {
@@ -183,12 +182,12 @@ func main() {
 func initiateSourceCollection(label string, realm string, token string, cycle int, targets []string, mainWg *sync.WaitGroup) {
 
 	var typeStruct SendTarget
-	var incidentStruct []IncidentPayload
 	url := "https://api." + realm + ".signalfx.com/v2/incident?limit=10000"
 	http_label := label + "_http_request"
 
 	for range time.Tick(time.Second * time.Duration(cycle)) {
 
+		var incidentStruct []IncidentPayload
 		logger.Printf("Starting gather cycle (%d) for sfx source %s\n", cycle, label)
 
 		headers := map[string]string{
@@ -200,7 +199,7 @@ func initiateSourceCollection(label string, realm string, token string, cycle in
 		err := makeHTTPRequest(http_label, "GET", url, headers, nil, &incidentStruct, false)
 		if err != nil {
 			httpRequestErrorCounter.WithLabelValues(http_label).Inc()
-			logger.Println("Error from HTTP request:", err)
+			logger.Printf("Error from HTTP request to gather incident data for source %s: %s", label, err)
 			continue
 		}
 
@@ -367,7 +366,7 @@ func (target *SplunkTarget) formatAndSend(wg *sync.WaitGroup) {
 	http_label := "splunk_send_http_request"
 	err := makeHTTPRequest(http_label, "POST", target.HECUrl, headers, batch, &responseStruct, target.SSLVerify)
 	if err != nil {
-		logger.Println("Error from HTTP request:", err)
+		logger.Printf("Error from Splunk send HTTP request for source %s:%s", target.HECUrl, err)
 		httpRequestErrorCounter.WithLabelValues(http_label).Inc()
 		return
 	} else {
