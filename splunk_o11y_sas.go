@@ -151,6 +151,7 @@ func main() {
 	//logger := log.New(multiWriter, "splunk-o11y-sas: ", log.LstdFlags)
 
 	logger.Println("Starting splunk_o11y_sas service...")
+	logger.Println("GitHub Action test")
 	ReadYamlConfig(config_file)
 
 	go func() {
