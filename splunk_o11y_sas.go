@@ -134,6 +134,7 @@ func init() {
 	logFile, err := os.OpenFile(log_file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		logger.Println("Error opening log file:", err)
+		logger.Println("GitHub Action build...")
 		return
 	}
 	//defer logFile.Close()
