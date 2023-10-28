@@ -1,5 +1,7 @@
 package main
 
+// comment
+
 import (
 	"bytes"
 	"crypto/tls"
